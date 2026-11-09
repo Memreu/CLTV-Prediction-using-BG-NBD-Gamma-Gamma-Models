@@ -1,116 +1,149 @@
-# 📌 BG-NBD ve Gamma-Gamma ile CLTV Prediction
+# 💎 BG-NBD ve Gamma-Gamma ile Müşteri Yaşam Boyu Değeri (CLTV) Tahmini
 
-## 💼 İş Problemi (Business Problem)
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/lifetimes-BG--NBD%20%C3%97%20Gamma--Gamma-29A36A" alt="lifetimes">
+  <img src="https://img.shields.io/badge/pandas-veri%20hazırlama-150458?logo=pandas&logoColor=white" alt="pandas">
+  <img src="https://img.shields.io/badge/veri-~20_bin_müşteri-E4572E" alt="Veri">
+  <img src="https://img.shields.io/badge/lisans-MIT-lightgrey" alt="MIT">
+</p>
 
-FLO satış ve pazarlama faaliyetleri için orta ve uzun vadeli bir yol
-haritası belirlemek istemektedir.\
-Bunun için mevcut müşterilerin gelecekte şirkete sağlayacakları
-potansiyel değerin (CLTV) tahmin edilmesi gerekmektedir.
+<p align="center">
+  <a href="https://nbviewer.org/github/Memreu/CLTV-Prediction-using-BG-NBD-Gamma-Gamma-Models/blob/main/cltv.ipynb"><img src="https://img.shields.io/badge/📓_Notebook'u_görüntüle-nbviewer-F37626?logo=jupyter&logoColor=white" alt="nbviewer"></a>
+  <a href="https://colab.research.google.com/github/Memreu/CLTV-Prediction-using-BG-NBD-Gamma-Gamma-Models/blob/main/cltv.ipynb"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open in Colab"></a>
+</p>
 
-------------------------------------------------------------------------
+Omnichannel bir ayakkabı perakendecisinin (FLO) ~20 bin müşterisi için **önümüzdeki 6 ayda kimin kaç kez alışveriş yapacağını**, **sepet başına ne kadar harcayacağını** ve bunların çarpımı olan **müşteri yaşam boyu değerini (CLTV)** tahmin eden olasılıksal bir modelleme projesi.
 
-## 📊 Veri Seti Hikayesi
+Sonuçta her müşteri A–D arası bir değer segmentine yerleşiyor ve pazarlama bütçesinin nereye gitmesi gerektiği sayısal olarak ortaya çıkıyor.
 
-Veri seti, son alışverişlerini 2020 - 2021 yıllarında **OmniChannel**
-(hem online hem offline alışveriş yapan) olarak yapan müşterilerin
-geçmiş alışveriş davranışlarından elde edilen bilgilerden oluşmaktadır.
+<p align="center"><img src="images/02_cltv_dagilimi.png" width="95%"></p>
 
-**Değişkenler:** - `master_id` : Eşsiz müşteri numarası\
-- `order_channel` : Alışveriş yapılan kanal (Android, iOS, Desktop,
-Mobile, Offline)\
-- `last_order_channel` : En son alışverişin yapıldığı kanal\
-- `first_order_date` : Müşterinin yaptığı ilk alışveriş tarihi\
-- `last_order_date` : Müşterinin yaptığı son alışveriş tarihi\
-- `last_order_date_online` : Online platformdaki son alışveriş tarihi\
-- `last_order_date_offline` : Offline platformdaki son alışveriş tarihi\
-- `order_num_total_ever_online` : Online toplam alışveriş sayısı\
-- `order_num_total_ever_offline` : Offline toplam alışveriş sayısı\
-- `customer_value_total_ever_online` : Online toplam harcama\
-- `customer_value_total_ever_offline` : Offline toplam harcama\
-- `interested_in_categories_12` : Son 12 ayda alışveriş yapılan
-kategoriler listesi
+> 🇬🇧 **In English:** A probabilistic customer lifetime value project on ~20K omnichannel retail customers. BG-NBD predicts the number of future purchases and Gamma-Gamma predicts the expected basket value; their combination gives a 6-month CLTV for every customer. Customers are split into four value segments: the top quartile (segment A) holds **46% of total expected value**, and the top 10% alone holds a quarter of it. iOS app customers are the most valuable channel (avg. CLTV 228 vs. 153 on desktop).
 
-------------------------------------------------------------------------
+<details>
+<summary><b>📑 İçindekiler</b></summary>
 
-## ⚙️ Kurulum
+- [Öne çıkan sonuçlar](#öne-çıkan-sonuçlar)
+- [Temel bulgular](#temel-bulgular)
+- [Yöntem](#yöntem)
+- [Proje akışı](#proje-akışı)
+- [Kurulum ve çalıştırma](#kurulum-ve-çalıştırma)
+- [Klasör yapısı](#klasör-yapısı)
+- [Veri](#veri)
+- [Sınırlılıklar ve sonraki adımlar](#sınırlılıklar-ve-sonraki-adımlar)
 
-1.  Gerekli kütüphaneleri yükleyin:
+</details>
 
-``` bash
-pip install pandas numpy lifetimes matplotlib seaborn jupyter
+## Öne çıkan sonuçlar
+
+| | Sonuç |
+|---|---|
+| 👥 **Kapsam** | 19.945 müşteri, analiz tarihi 01.06.2021, 6 aylık tahmin ufku |
+| 🛒 **Beklenen satın alma** | Önümüzdeki 3 ayda ~11.500, 6 ayda ~23.000 sipariş (BG-NBD) |
+| 💰 **Toplam beklenen değer** | 6 ayda ~3,9 milyon TL; müşteri başına ortalama **195 TL**, medyan 165 TL |
+| 🏆 **Değer yoğunlaşması** | En değerli %25 (A segmenti) toplam CLTV'nin **%46**'sını, en değerli %10 ise **%25**'ini oluşturuyor |
+| 📱 **Kanal farkı** | iOS uygulaması müşterileri ortalama **228 TL**, masaüstü müşterileri **153 TL** CLTV'ye sahip |
+
+## Temel bulgular
+
+1. **Segmentler hem sıklıkta hem sepette ayrışıyor.** A segmenti B'ye göre yalnızca biraz daha sık alışveriş yapıyor (1,55'e karşı 1,20) ama sepet değeri belirgin şekilde yüksek (238 TL'ye karşı 168 TL). Yani en değerli müşterileri ayıran şey daha çok **ne kadar harcadıkları**.
+2. **Değer dengesiz dağılıyor.** Müşterilerin dörtte biri, beklenen gelirin neredeyse yarısını getiriyor. Sadakat ve premium kampanyalarında bu grup önceliklendirilmeli.
+3. **Mobil uygulama kullanıcıları daha değerli.** iOS ve Android uygulamasından gelen müşterilerin CLTV'si, mobil web ve masaüstüne göre %20–50 daha yüksek. Uygulama indirmeye yönelik kampanyalar uzun vadede değer yaratabilir.
+4. **D segmenti küçük ama ihmal edilmemeli.** Ortalama 80 TL ile en düşük değere sahip olsa da 5 bin müşteriden oluşuyor. Bu grup için düşük maliyetli e-posta ve indirim kampanyaları yeterli.
+
+| Segment | Ortalama 6 aylık CLTV | Beklenen 6 aylık satın alma | Beklenen sepet değeri | Müşteri | Önerilen aksiyon |
+|---|---:|---:|---:|---:|---|
+| **A** | 362 TL | 1,55 | 238 TL | 4.986 | Sadakat programı, erken erişim, premium koleksiyonlar |
+| **B** | 200 TL | 1,20 | 168 TL | 4.986 | Çapraz satış ve üst satış (cross-sell / upsell) |
+| **C** | 138 TL | 1,05 | 132 TL | 4.986 | Yeniden etkileşim kampanyaları |
+| **D** | 80 TL | 0,82 | 99 TL | 4.987 | Düşük maliyetli e-posta ve küçük promosyonlar |
+
+<p align="center"><img src="images/01_segment_ozeti.png" width="95%"></p>
+<p align="center"><img src="images/03_kanal_ve_yogunlasma.png" width="95%"></p>
+
+## Yöntem
+
+- **BG-NBD (Beta Geometric / Negative Binomial Distribution):** Her müşterinin "aktif" olduğu sürece Poisson süreciyle alışveriş yaptığını, her alışverişten sonra belirli bir olasılıkla da sessizce ayrıldığını varsayar. Buradan belirli bir süredeki **beklenen satın alma sayısı** elde edilir.
+- **Gamma-Gamma:** Müşterinin geçmiş sepet ortalamasını, tüm müşterilerin ortalamasına doğru büzerek **beklenen sepet değerini** tahmin eder. Az alışveriş yapmış müşterilerin uç değerleri böylece yumuşatılır.
+- **CLTV:** İki modelin çıktısı, aylık %1 iskonto oranıyla 6 aylık ufuk için birleştirilir (`lifetimes.GammaGammaFitter.customer_lifetime_value`).
+
+## Proje akışı
+
+| # | Bölüm | Teknik |
+|---|---|---|
+| 1 | Veri hazırlama | Online + offline sipariş ve harcamaların birleştirilmesi, tarih dönüşümleri |
+| 2 | Aykırı değer baskılama | %1–%99 çeyrekliklerine dayalı eşiklerle *winsorize* |
+| 3 | CLTV veri yapısı | Haftalık recency, müşteri yaşı (T), frequency, ortalama sepet |
+| 4 | BG-NBD | 3 ve 6 aylık beklenen satın alma sayısı |
+| 5 | Gamma-Gamma | Koşullu beklenen sepet değeri |
+| 6 | CLTV | 6 aylık, iskontolu müşteri yaşam boyu değeri |
+| 7 | Segmentasyon | CLTV çeyrekliklerine göre A–D segmentleri ve aksiyon önerileri |
+
+## Kurulum ve çalıştırma
+
+```bash
+git clone https://github.com/Memreu/CLTV-Prediction-using-BG-NBD-Gamma-Gamma-Models.git
+cd CLTV-Prediction-using-BG-NBD-Gamma-Gamma-Models
+pip install -r requirements.txt
+jupyter lab cltv.ipynb
 ```
 
-2.  Projeyi indirin veya klonlayın:
+Veri seti (`data.csv`) repoda bulunduğu için ayrıca bir şey indirmene gerek yok. README'deki grafikleri yeniden üretmek için:
 
-``` bash
-git clone https://github.com/kullanici/cltv-prediction.git
-cd cltv-prediction
+```bash
+python scripts/readme_grafikleri.py
 ```
 
-3.  Jupyter Notebook ortamında açın:
+**Kurulum yapmadan incelemek için:**
+- 📓 [nbviewer'da görüntüle](https://nbviewer.org/github/Memreu/CLTV-Prediction-using-BG-NBD-Gamma-Gamma-Models/blob/main/cltv.ipynb): Tüm çıktılarla, hiçbir şey kurmadan okunabilir.
+- ☁️ [Google Colab'da çalıştır](https://colab.research.google.com/github/Memreu/CLTV-Prediction-using-BG-NBD-Gamma-Gamma-Models/blob/main/cltv.ipynb): `data.csv` dosyasını Colab'a yükleyip ilk hücreden önce şu komutu çalıştırman yeterli:
+  ```python
+  !pip install -q lifetimes
+  ```
 
-``` bash
-jupyter notebook Flo.ipynb
+## Klasör yapısı
+
+```
+├── cltv.ipynb                    # Ana notebook (çıktılarıyla birlikte)
+├── data.csv                      # FLO müşteri veri seti
+├── scripts/
+│   └── readme_grafikleri.py      # README grafiklerini üreten betik
+├── images/                       # README grafikleri
+├── requirements.txt
+├── LICENSE
+└── README.md
 ```
 
-------------------------------------------------------------------------
+## Veri
 
-## ▶️ Kullanım
+FLO'nun 2020–2021 yıllarında hem online hem offline alışveriş yapmış (**OmniChannel**) müşterilerine ait anonimleştirilmiş veri seti (Miuul eğitim programı kapsamında paylaşılmıştır).
 
-1.  `Flo.ipynb` dosyasını Jupyter Notebook ile açın.\
-2.  Kod hücrelerini sırasıyla çalıştırarak veri ön işleme, modelleme ve
-    tahmin aşamalarını inceleyin.\
-3.  Kendi veri setinizi kullanmak için Notebook içindeki **veri yükleme
-    kısmını** değiştirin.
+<details>
+<summary><b>Değişkenler</b></summary>
 
-Örnek kod parçası:
+| Değişken | Açıklama |
+|---|---|
+| `master_id` | Eşsiz müşteri numarası |
+| `order_channel` | Alışverişte kullanılan kanal (Android App, iOS App, Desktop, Mobile) |
+| `last_order_channel` | En son alışverişin yapıldığı kanal |
+| `first_order_date` / `last_order_date` | İlk ve son alışveriş tarihi |
+| `last_order_date_online` / `last_order_date_offline` | Online ve offline son alışveriş tarihi |
+| `order_num_total_ever_online` / `_offline` | Online ve offline toplam alışveriş sayısı |
+| `customer_value_total_ever_online` / `_offline` | Online ve offline toplam harcama |
+| `interested_in_categories_12` | Son 12 ayda alışveriş yapılan kategoriler |
 
-``` python
-import pandas as pd
+</details>
 
-df = pd.read_csv("data.csv")
-# CLTV analizi adımları burada çalıştırılır
-```
+## Sınırlılıklar ve sonraki adımlar
 
-------------------------------------------------------------------------
+- **Frequency tanımı.** `lifetimes` kütüphanesi *tekrar eden* satın alma sayısını bekler; bu çalışmada toplam sipariş sayısı kullanıldı. `frequency - 1` ile yeniden kurmak modeli teoriye daha uygun hale getirir.
+- **Model kaybı (churn) görmüyor.** Uydurulan BG-NBD'de ayrılma parametreleri (a, b) sıfıra yakın çıktı; model pratikte herkesi aktif kabul ediyor. Bu yüzden CLTV, yakın zamanda alışveriş yapmamış müşteriler için iyimser olabilir. Bu sorunu ve çözümünü [Customer-Churn-and-Value-Prediction](https://github.com/Memreu/Customer-Churn-and-Value-Prediction) projesinde ayrıca inceledim.
+- **Doğrulama.** Veri tek bir anlık görüntü olduğu için tahminler geriye dönük test edilmedi. Kalibrasyon/holdout dönemine ayrılmış bir veriyle tahmin edilen ve gerçekleşen satın almalar karşılaştırılabilir.
+- **Segmentasyon.** Eşit büyüklükte çeyreklikler yerine iş hedefine göre (ör. bütçe kısıtı) belirlenen eşikler daha uygulanabilir olabilir.
 
-## 🌟 Özellikler
+---
 
--   📊 BG-NBD ve Gamma-Gamma modelleri ile CLTV tahmini\
--   🔍 Müşteri bazlı değer analizi\
--   📈 Görselleştirme desteği (Matplotlib / Seaborn)\
--   🛠 Jupyter Notebook ortamında adım adım çalıştırılabilir\
--   🔗 Farklı veri setlerine kolay uyarlanabilir\
--   📑 CLTV bazlı segment oluşturma ve raporlama
+Bu proje [MIT lisansı](LICENSE) ile paylaşılmaktadır.
 
-------------------------------------------------------------------------
-
-## 📊 Çıktılar
-
--   Her müşteri için beklenen satın alma sayısı ve tahmini gelir\
--   CLTV skorlarının hesaplanması ve sıralanması\
--   Segment bazlı müşteri değer dağılımı ve görselleştirme
-
-Örnek görselleştirme:
-
-``` python
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-sns.histplot(cltv_df["cltv"])
-plt.title("Müşteri CLTV Dağılımı")
-plt.show()
-```
-
-------------------------------------------------------------------------
-
-## 📈 Çalışma Akışı
-
-``` mermaid
-flowchart TD
-    A[Veri Yükleme] --> B[Veri Ön İşleme]
-    B --> C[BG-NBD Modeli ile Beklenen Satın Alma]
-    C --> D[Gamma-Gamma Modeli ile Ortalama Harcama]
-    D --> E[CLTV Hesaplama]
-    E --> F[Segmentasyon ve Raporlama]
-```
+**Mehmet Emre Ünlü** · [GitHub](https://github.com/Memreu) · [LinkedIn](https://www.linkedin.com/in/memreu) · [Kaggle](https://www.kaggle.com/memreu)
