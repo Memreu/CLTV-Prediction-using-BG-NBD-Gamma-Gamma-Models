@@ -29,6 +29,8 @@ Kanal bazında iOS uygulaması müşterilerinin ortalama CLTV'si 228 TL, masaüs
 
 ![Segment özeti](images/01_segment_ozeti.png)
 
+![Kanal ve değer yoğunlaşması](images/03_kanal_ve_yogunlasma.png)
+
 ## Dikkat edilmesi gerekenler
 
 Bu sonuçları okurken birkaç noktayı göz önünde tutmak gerekiyor. `lifetimes` tekrar eden satın alma sayısını beklerken ben toplam sipariş sayısını kullandım; `frequency - 1` ile yeniden kurmak teoriye daha uygun olur. Uydurulan BG-NBD'de ayrılma parametreleri (a, b) sıfıra yakın çıktı, yani model pratikte herkesi aktif kabul ediyor. Bu da uzun süredir alışveriş yapmamış müşteriler için CLTV'nin iyimser kalabileceği anlamına geliyor. Bu konuyu [Customer-Churn-and-Value-Prediction](https://github.com/Memreu/Customer-Churn-and-Value-Prediction) projesinde ayrıca inceledim.
